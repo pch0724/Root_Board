@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8" ?>  
+<!DOCTYPE mapper   
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"   
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">  
+
+<mapper namespace="BoardDao">  
+
+	<select id="boardList" parameterType="map" resultType="BoardVO">
+    SELECT SEQ, NAME, TITLE, CONTENT, PASS, HIT, REGDATE
+    FROM (
+        SELECT A.*, ROWNUM RNUM
+        FROM (
+            SELECT * FROM BOARD
+            <where>
+                <trim prefixOverrides="AND">
+                    <choose>
+                        <when test="keyField == 'all'">
+                            (
+                                LOWER(TITLE) LIKE LOWER('%'||#{keyWord}||'%') OR
+                                LOWER(CONTENT) LIKE LOWER('%'||#{keyWord}||'%') OR
+                                LOWER(NAME) LIKE LOWER('%'||#{keyWord}||'%') OR
+                                LOWER(originalFileName) LIKE LOWER('%'||#{keyWord}||'%')
+                            )
+                        </when>
+                        <when test="keyField == 'title'">
+                                LOWER(TITLE) LIKE LOWER('%'||#{keyWord}||'%')
+                        </when>
+                        <when test="keyField == 'name'">
+                                LOWER(NAME) LIKE LOWER('%'||#{keyWord}||'%')
+                        </when>
+                        <when test="keyField == 'content'">
+                                LOWER(CONTENT) LIKE LOWER('%'||#{keyWord}||'%')
+                        </when>
+                    </choose>
+                </trim>
+            </where>
+            ORDER BY REF DESC, STEP ASC
+        ) A
+    )
+    <![CDATA[
+    WHERE RNUM >= #{start} AND RNUM <= #{end}
+    ]]>
+	</select>
+	
+	<select id="boardCount" parameterType="map" resultType="Integer">
+    SELECT COUNT(*)
+    FROM BOARD
+    <where>
+        <trim prefixOverrides="AND">
+                    <choose>
+                        <when test="keyField == 'all'">
+                            (
+                                LOWER(TITLE) LIKE LOWER('%'||#{keyWord}||'%') OR
+                                LOWER(CONTENT) LIKE LOWER('%'||#{keyWord}||'%') OR
+                                LOWER(NAME) LIKE LOWER('%'||#{keyWord}||'%') OR
+                                LOWER(originalFileName) LIKE LOWER('%'||#{keyWord}||'%')
+                            )
+                        </when>
+                        <when test="keyField == 'title'">
+                                LOWER(TITLE) LIKE LOWER('%'||#{keyWord}||'%')
+                        </when>
+                        <when test="keyField == 'name'">
+                                LOWER(NAME) LIKE LOWER('%'||#{keyWord}||'%')
+                        </when>
+                        <when test="keyField == 'content'">
+                                LOWER(CONTENT) LIKE LOWER('%'||#{keyWord}||'%')
+                        </when>
+                    </choose>
+
+        </trim>
+    </where>
+	</select>
+	
+	<!-- 쓰기 -->
+	<insert id="write" parameterType="BoardVO">
+		insert into board(seq, name, title, content, pass, hit, regdate, fileName, originalFileName, ref, step, depth) 
+		values(BOARD_SEQ.nextval,#{name},#{title}, #{content}, #{pass}, 0, sysdate, #{fileName, jdbcType = VARCHAR}, #{originalFileName, jdbcType = VARCHAR}, BOARD_SEQ.nextval, 0, 0)
+	</insert>
+	
+	<!-- 답변 작성 -->
+    <insert id="insertReply" parameterType="BoardVO">
+        INSERT INTO board (seq, name, title, content, pass, hit, regdate, fileName, originalFileName, ref, step, depth)
+        VALUES (BOARD_SEQ.NEXTVAL, #{name}, #{title}, #{content}, #{pass}, 0, SYSDATE, #{fileName, jdbcType = VARCHAR}, #{originalFileName, jdbcType = VARCHAR}, #{ref}, #{step}, #{depth})
+    </insert>
+    
+	<update id="updateReplyInfo" parameterType="map">
+        UPDATE board SET step = step + 1 WHERE ref = #{ref} AND step > #{step}
+    </update>
+
+	<!-- 조회수 -->
+	<update id="hitup" parameterType = "int">
+		update board set hit = hit+1 where seq = #{seq}	
+	</update>
+	
+	<!-- 상세보기 -->
+	<select id="read" parameterType = "int" resultType="BoardVO">
+		select * from board where seq = #{seq}
+	</select>
+	
+	<!-- 수정 -->
+	<update id="modify" parameterType="BoardVO">
+		update board set 
+		title = #{title}, name = #{name}, content = #{content}, fileName = #{fileName, jdbcType = VARCHAR}, originalFileName = #{originalFileName, jdbcType = VARCHAR} 
+		where seq = #{seq}
+	</update>
+	
+	<!-- 삭제 -->
+	<delete id="delete" parameterType="int">
+		delete from board where seq = #{seq}
+	</delete>
+	
+	<!-- 비밀번호 확인 -->
+	<select id ="checkPassword" resultType = "int">
+		select nvl2(max(title),1,0) as chkPass from board where pass = #{pass} and seq = #{seq}
+	</select>
+	
+	<select id ="beforeDelete" resultType = "BoardVO">
+		select seq, pass from board where seq = #{seq}
+	</select>
+	
+	<!-- 파일명 업데이트 -->
+	<update id="updateFileName" parameterType="map">
+	    UPDATE board SET fileName = #{fileName}, originalFileName = #{originalFileName, jdbcType = VARCHAR} WHERE seq = #{seq}
+	</update>
+	
+
+</mapper>
+
+
+
+
+
+
+
